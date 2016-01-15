@@ -39,40 +39,47 @@ public class PipelineApp {
 
     int taskNumber = 1;
 
-    KafkaStorageFactory offsetStorageFactory = new KafkaStorageFactory("localhost:2181", "localhost:9092");
+    KafkaStorageFactory offsetStorageFactory = new KafkaStorageFactory("slave02.infobird.com:2181", "localhost:9092");
 
     // kafka source
-    KafkaSource kafkaSource = new KafkaSource("inputTopic", "localhost:2181", offsetStorageFactory);
+    KafkaSource kafkaSource = new KafkaSource("topic_test_10000", "slave02.infobird.com:2181", offsetStorageFactory);
     Processor sourceProcessor = Processor.source(kafkaSource, taskNumber, "kafkaSource",
         appConfig, context.system());
 
     // converter (converts byte[] message to String -- kafka produces byte[])
-    Processor convert2StringProcessor = new Processor(ByteArray2StringTask.class, taskNumber, "converter", null);
+    //Processor convert2StringProcessor = new Processor(ByteArray2StringTask.class, taskNumber, "converter", null);
 
-    // converter (converts String message to scala.Tuple2 -- kafka sink needs it)
-    Processor convert2TupleProcessor = new Processor(String2Tuple2Task.class, taskNumber, "converter", null);
-
-    // simple processor (represents processing you would do on kafka messages stream; writes payload to logs)
-    Processor logProcessor = new Processor(LogMessageTask.class, taskNumber, "forwarder", null);
+    //Processor avroParquetProcessor = new Processor(AvroParquet.class, taskNumber, "converter", null);
+      Processor writeToRedisProcessor = new Processor(WriteToRedis.class, taskNumber, "converter", null);
+      
+//    // converter (converts String message to scala.Tuple2 -- kafka sink needs it)
+//    Processor convert2TupleProcessor = new Processor(String2Tuple2Task.class, taskNumber, "converter", null);
+//
+//    // simple processor (represents processing you would do on kafka messages stream; writes payload to logs)
+//    Processor logProcessor = new Processor(LogMessageTask.class, taskNumber, "forwarder", null);
 
     // kafka sink
-    KafkaSink kafkaSink = new KafkaSink("outputTopic", "localhost:9092");
-    Processor sinkProcessor = Processor.sink(kafkaSink, taskNumber, "sink", appConfig, context.system());
+    //KafkaSink kafkaSink = new KafkaSink("connect-call_info_history_10000_target", "localhost:9092");
+    //Processor sinkProcessor = Processor.sink(kafkaSink, taskNumber, "sink", appConfig, context.system());
 
     Graph graph = new Graph();
     graph.addVertex(sourceProcessor);
-    graph.addVertex(convert2StringProcessor);
-    graph.addVertex(logProcessor);
-    graph.addVertex(convert2TupleProcessor);
-    graph.addVertex(sinkProcessor);
+    graph.addVertex(writeToRedisProcessor);
+    //graph.addVertex(convert2StringProcessor);
+//    graph.addVertex(logProcessor);
+//    graph.addVertex(convert2TupleProcessor);
+    //graph.addVertex(sinkProcessor);
 
     Partitioner partitioner = new HashPartitioner();
     Partitioner shufflePartitioner = new ShufflePartitioner();
 
-    graph.addEdge(sourceProcessor, shufflePartitioner, convert2StringProcessor);
-    graph.addEdge(convert2StringProcessor, partitioner, logProcessor);
-    graph.addEdge(logProcessor, partitioner, convert2TupleProcessor);
-    graph.addEdge(convert2TupleProcessor, partitioner, sinkProcessor);
+    graph.addEdge(sourceProcessor, shufflePartitioner, writeToRedisProcessor);
+    
+    //graph.addEdge(sourceProcessor, shufflePartitioner, convert2StringProcessor);
+//    graph.addEdge(convert2StringProcessor, partitioner, logProcessor);
+//    graph.addEdge(logProcessor, partitioner, convert2TupleProcessor);
+//    graph.addEdge(convert2TupleProcessor, partitioner, sinkProcessor);
+     // graph.addEdge(convert2StringProcessor, partitioner, sinkProcessor);
 
     // submit app
     StreamApplication app = new StreamApplication("kafka2kafka", appConfig, graph);

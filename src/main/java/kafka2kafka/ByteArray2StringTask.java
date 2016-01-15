@@ -19,48 +19,71 @@
 
 package kafka2kafka;
 
+import java.io.UnsupportedEncodingException;
+
 import io.gearpump.Message;
 import io.gearpump.cluster.UserConfig;
 import io.gearpump.streaming.javaapi.Task;
 import io.gearpump.streaming.task.StartTime;
 import io.gearpump.streaming.task.TaskContext;
+
 import org.slf4j.Logger;
+
+import scala.Tuple2;
 
 public class ByteArray2StringTask extends Task {
 
-  private Logger LOG = super.LOG();
+	private Logger LOG = super.LOG();
 
-  public ByteArray2StringTask(TaskContext taskContext, UserConfig userConf) {
-    super(taskContext, userConf);
-  }
+	public ByteArray2StringTask(TaskContext taskContext, UserConfig userConf) {
+		super(taskContext, userConf);
+	}
 
-  private Long now() {
-    return System.currentTimeMillis();
-  }
+	private Long now() {
+		return System.currentTimeMillis();
+	}
 
-  @Override
-  public void onStart(StartTime startTime) {
-    LOG.info("ByteArray2StringTask.onStart [" + startTime + "]");
-  }
+	@Override
+	public void onStart(StartTime startTime) {
+		LOG.info("ByteArray2StringTask.onStart [" + startTime + "]");
+	}
 
-  /**
-   * Convert message payload to String if it is byte[]. Leave as is otherwise.
-   *
-   * @param messagePayLoad
-   */
-  @Override
-  public void onNext(Message messagePayLoad) {
-    LOG.info("ByteArray2StringTask.onNext messagePayLoad = [" + messagePayLoad + "]");
-    LOG.debug("message.msg class" + messagePayLoad.msg().getClass().getCanonicalName());
+	/**
+	 * Convert message payload to String if it is byte[]. Leave as is otherwise.
+	 * 
+	 * @param messagePayLoad
+	 */
+	@Override
+	public void onNext(Message messagePayLoad) {
+		LOG.info("ByteArray2StringTask.onNext messagePayLoad = ["
+				+ messagePayLoad + "]");
+		LOG.debug("message.msg class"
+				+ messagePayLoad.msg().getClass().getCanonicalName());
+		
+		Object msg = messagePayLoad.msg();		
+		byte[] key = null;
+		byte[] value = null;
+		try {
+			key = "message".getBytes("UTF-8");
+			value = ("[changed:]"+ new String((byte[]) msg)).getBytes("UTF-8");
+			
+			
+			Tuple2<byte[], byte[]> tuple = new Tuple2<byte[], byte[]>(key,
+					value);
+			context.output(new Message(tuple, now()));
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+			LOG.info("sending message as is.");
+			context.output(new Message(msg, now()));
+		}
 
-    Object msg = messagePayLoad.msg();
-
-    if (msg instanceof byte[]) {
-      LOG.debug("converting to String.");
-      context.output(new Message(new String((byte[]) msg), now()));
-    } else {
-      LOG.debug("sending message as is.");
-      context.output(new Message(msg, now()));
-    }
-  }
+		// if (msg instanceof byte[]) {
+		// LOG.debug("converting to String.");
+		// context.output(new Message("[byte:]" + new String((byte[]) msg),
+		// now()));
+		// } else {
+		// LOG.debug("sending message as is.");
+		// context.output(new Message("[String:]" + msg, now()));
+		// }
+	}
 }

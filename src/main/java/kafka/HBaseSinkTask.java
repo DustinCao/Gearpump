@@ -49,8 +49,7 @@ public class HBaseSinkTask extends Task {
     Configuration hbaseConf = new Configuration();
     hbaseConf.set(ZOOKEEPER_QUORUM, zkQuorum);
 
-
-    sink = new HBaseSink(tableName, hbaseConf);
+    sink = new HBaseSink(userConf, tableName);
   }
 
   @Override
