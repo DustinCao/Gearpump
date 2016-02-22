@@ -1,8 +1,17 @@
+
+
 package kafka2kafka;
 
+import java.io.IOException;
+
+import org.apache.avro.io.BinaryDecoder;
+import org.apache.avro.io.DecoderFactory;
+import org.apache.avro.specific.SpecificDatumReader;
+import org.apache.avro.util.Utf8;
 import org.slf4j.Logger;
 
 import com.infobird.redis.RedisManager;
+import com.infobird.spark.parquet.entity.HiveUser;
 import com.infobird.utils.PropertiesUtil;
 
 import redis.clients.jedis.Jedis;
@@ -46,29 +55,41 @@ public class WriteToRedis extends Task{
 				+ messagePayLoad.msg().getClass().getCanonicalName());
 		
 		String fields = "Message_"+now();
-		//String fields1 = messagePayLoad.productPrefix();
 		
 		Object msg = messagePayLoad.msg();	
+		byte[] msgbytes = (byte[]) msg;
 		
-		LOG.info("WriteToRedis === begion" + num + new String((byte[]) msg) + "[messagePayLoad.productPrefix():]" + messagePayLoad.productPrefix());
-		
-		
-		RedisManager.putHash(KEY, fields, new String((byte[]) msg));
-		
-		num = num++;
-		
-		LOG.info("WriteToRedis === end" + num);
-/*		num = num++;
-		
-		
-	    pipeline = jedis.pipelined();
+		LOG.info("WriteToRedis === begion" + new String((byte[]) msg) + "[messagePayLoad.productPrefix():]" + messagePayLoad.productPrefix());
 
-		RedisManager.putHashWithPipeline(KEY, "Message_"+num, new String((byte[]) msg), pipeline);
+		SpecificDatumReader<HiveUser> datumReader = new SpecificDatumReader<HiveUser>(HiveUser.class);
+		HiveUser user = null;
+		BinaryDecoder binaryDecoder = DecoderFactory.get().binaryDecoder(msgbytes,null);
 		
-		if( 10000 == num) {
-			num = 0;
-			pipeline.exec();
-		}*/
+		try {
+
+			while(!binaryDecoder.isEnd()) {
+				
+				user = datumReader.read(user, binaryDecoder);
+				
+				Utf8 phoneUtf = (Utf8)user.getTelphoneName();
+				String phone = new String(phoneUtf.getBytes(),"Utf-8");
+				
+				Utf8 cityUtf = (Utf8)user.getCitynameName();
+				String city = new String(cityUtf.getBytes(),"Utf-8");
+				
+				Utf8 talkingUtf = (Utf8)user.getTalkingTimeName();
+				String talking = new String(talkingUtf.getBytes(),"Utf-8");
+				
+				LOG.info("[ReadAvroRecord:] [phone:] " + phone + "[city:] " + city +"[talking:] " + talking);
+				
+				RedisManager.putHash(KEY, phone, city+";"+talking);
+			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		LOG.info("WriteToRedis === end" );
 	
 	}
 	

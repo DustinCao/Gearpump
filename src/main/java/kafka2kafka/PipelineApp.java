@@ -27,7 +27,6 @@ import io.gearpump.partitioner.ShufflePartitioner;
 import io.gearpump.streaming.javaapi.Graph;
 import io.gearpump.streaming.javaapi.Processor;
 import io.gearpump.streaming.javaapi.StreamApplication;
-import io.gearpump.streaming.kafka.KafkaSink;
 import io.gearpump.streaming.kafka.KafkaSource;
 import io.gearpump.streaming.kafka.KafkaStorageFactory;
 
@@ -42,7 +41,7 @@ public class PipelineApp {
     KafkaStorageFactory offsetStorageFactory = new KafkaStorageFactory("slave02.infobird.com:2181", "localhost:9092");
 
     // kafka source
-    KafkaSource kafkaSource = new KafkaSource("topic_test_10000", "slave02.infobird.com:2181", offsetStorageFactory);
+    KafkaSource kafkaSource = new KafkaSource("test_222", "slave02.infobird.com:2181", offsetStorageFactory);
     Processor sourceProcessor = Processor.source(kafkaSource, taskNumber, "kafkaSource",
         appConfig, context.system());
 
